@@ -1,5 +1,6 @@
 import pygame
 import random
+from ai import SimpleAI  # Import the AI
 
 # Initialize Pygame
 pygame.init()
@@ -58,6 +59,7 @@ class BrickBreaker:
         self.paddle = Paddle(WIDTH // 2 - PADDLE_WIDTH // 2, HEIGHT - 30)
         self.ball = Ball(WIDTH // 2, HEIGHT // 2, 5, -5)
         self.bricks = [Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30) for y in range(ROWS) for x in range(COLS)]
+        self.ai = SimpleAI(self.paddle, self.ball)  # Initialize the AI
 
     def run(self):
         running = True
@@ -66,11 +68,7 @@ class BrickBreaker:
                 if event.type == pygame.QUIT:
                     running = False
 
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT]:
-                self.paddle.move(-10)
-            if keys[pygame.K_RIGHT]:
-                self.paddle.move(10)
+            self.ai.update()  # Update AI
 
             self.ball.move()
 
