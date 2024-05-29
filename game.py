@@ -4,9 +4,10 @@ from ai import SimpleAI  # Import the AI
 
 # Initialize Pygame
 pygame.init()
+pygame.font.init()  # Initialize the font module
 
 # Screen dimensions
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 800, 650  # Increased height by 50 pixels
 PADDLE_WIDTH, PADDLE_HEIGHT = 100, 10
 BALL_RADIUS = 10
 BRICK_WIDTH, BRICK_HEIGHT = 60, 20
@@ -56,17 +57,23 @@ class BrickBreaker:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Brick Breaker")
         self.clock = pygame.time.Clock()
-        self.paddle = Paddle(WIDTH // 2 - PADDLE_WIDTH // 2, HEIGHT - 30)
+        self.paddle = Paddle(WIDTH // 2 - PADDLE_WIDTH // 2, HEIGHT - 80)  # Adjusted paddle position
         self.ball = Ball(WIDTH // 2, HEIGHT // 2, 5, -5)
         self.bricks = [Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30) for y in range(ROWS) for x in range(COLS)]
         self.ai = SimpleAI(self.paddle, self.ball)  # Initialize the AI
+        self.paddle_hits = 0  # Counter for paddle hits
+        self.font = pygame.font.SysFont('Arial', 24)  # Initialize font
+
+        print("Initialized game components")
 
     def run(self):
         running = True
+        print("Starting game loop")
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                    print("Exiting game loop")
 
             self.ai.update()  # Update AI
 
@@ -75,13 +82,15 @@ class BrickBreaker:
             # Check for collisions
             if self.ball.rect.colliderect(self.paddle.rect):
                 self.ball.dy = -self.ball.dy
+                self.paddle_hits += 1  # Increment paddle hits
+
             for brick in self.bricks[:]:
                 if self.ball.rect.colliderect(brick.rect):
                     self.bricks.remove(brick)
                     self.ball.dy = -self.ball.dy
 
             # Check if ball is lost
-            if self.ball.rect.bottom >= HEIGHT:
+            if self.ball.rect.bottom >= HEIGHT - 50:  # Adjusted for new height
                 print("Game Over")
                 running = False
 
@@ -90,10 +99,18 @@ class BrickBreaker:
             pygame.draw.ellipse(self.screen, RED, self.ball.rect)
             for brick in self.bricks:
                 pygame.draw.rect(self.screen, BLUE, brick.rect)
+
+            # Render the paddle hits counter
+            hits_text = self.font.render(f'Paddle Hits: {self.paddle_hits}', True, WHITE)
+            self.screen.blit(hits_text, (10, HEIGHT - 40))  # Positioned at the bottom in the new space
+
             pygame.display.flip()
             self.clock.tick(60)
+
+        print("Game loop ended")
 
 if __name__ == "__main__":
     game = BrickBreaker()
     game.run()
     pygame.quit()
+    print("Pygame quit")
