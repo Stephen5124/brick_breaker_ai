@@ -59,6 +59,7 @@ class Ball:
             if self.rect.colliderect(brick.rect):
                 bricks.remove(brick)
                 self.dy = -self.dy
+                game.score += 10  # Increment score for breaking a brick
 
 # Brick class
 class Brick:
@@ -72,8 +73,8 @@ class BrickBreaker:
         pygame.display.set_caption("Brick Breaker")
         self.clock = pygame.time.Clock()
         self.paddle = Paddle(WIDTH // 2 - PADDLE_WIDTH // 2, HEIGHT - 80)  # Adjusted paddle position
-        self.ball = Ball(WIDTH // 2, HEIGHT // 2, 5, -5)
-        self.bricks = [Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30) for y in range(ROWS) for x in range(COLS)]
+        self.level = 1  # Initialize level
+        self.initialize_level()  # Initialize the first level
         self.ai = SimpleAI(self.paddle, self.ball)  # Initialize the AI
         self.paddle_hits = 0  # Counter for paddle hits
         self.font = pygame.font.SysFont('Arial', 24)  # Initialize font
@@ -85,7 +86,34 @@ class BrickBreaker:
         self.slider_handle_rect = pygame.Rect(self.slider_rect.x, self.slider_rect.y - 5, 10, 20)
         self.dragging = False
 
+        # Lives
+        self.lives = 3  # Number of lives
+
+        # Score
+        self.score = 0  # Player's score
+
         print("Initialized game components")
+
+    def initialize_level(self):
+        if self.level == 1:
+            self.bricks = [Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30) for y in range(ROWS) for x in range(COLS)]
+            self.ball = Ball(WIDTH // 2, HEIGHT // 2, 5, -5)
+        elif self.level == 2:
+            self.bricks = []
+            for y in range(ROWS + 1):
+                for x in range(COLS + 1):
+                    if (x + y) % 2 == 0:
+                        self.bricks.append(Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30))
+            self.ball = Ball(WIDTH // 2, 100, 5, 5)
+        elif self.level == 3:
+            self.bricks = []
+            for y in range(ROWS + 2):
+                for x in range(COLS + 2):
+                    if (x + y) % 3 != 0:
+                        self.bricks.append(Brick(x * (BRICK_WIDTH + 10) + 35, y * (BRICK_HEIGHT + 10) + 30))
+            self.ball = Ball(WIDTH // 2, HEIGHT // 2, -5, 5)
+        self.ai = SimpleAI(self.paddle, self.ball)  # Reinitialize the AI for each level
+        self.game_won = False
 
     def draw_slider(self):
         pygame.draw.rect(self.screen, GRAY, self.slider_rect)
@@ -112,6 +140,20 @@ class BrickBreaker:
         handle_position = self.slider_handle_rect.x - self.slider_rect.x
         return int((handle_position / slider_range) * 9) + 1  # Speed value from 1 to 10
 
+    def show_level_transition(self):
+        self.screen.fill(BLACK)
+        level_text = self.win_font.render(f"Level {self.level}", True, GREEN)
+        self.screen.blit(level_text, (WIDTH // 2 - level_text.get_width() // 2, HEIGHT // 2 - level_text.get_height() // 2))
+        pygame.display.flip()
+        pygame.time.wait(2000)  # Wait for 2 seconds
+
+    def show_win_screen(self):
+        self.screen.fill(BLACK)
+        win_text = self.win_font.render("Congratulations! You Win!", True, GREEN)
+        self.screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 2 - win_text.get_height() // 2))
+        pygame.display.flip()
+        pygame.time.wait(5000)  # Wait for 5 seconds
+
     def run(self):
         running = True
         print("Starting game loop")
@@ -132,12 +174,26 @@ class BrickBreaker:
 
                 # Check if ball is lost
                 if self.ball.rect.bottom >= HEIGHT - 50:  # Adjusted for new height
-                    print("Game Over")
-                    running = False
+                    self.lives -= 1  # Deduct a life
+                    if self.lives <= 0:
+                        print("Game Over")
+                        running = False
+                    else:
+                        # Reset ball and paddle positions
+                        self.ball.rect.x, self.ball.rect.y = WIDTH // 2, HEIGHT // 2
+                        self.ball.dx, self.ball.dy = 5, -5
+                        self.paddle.rect.x = WIDTH // 2 - PADDLE_WIDTH // 2
 
                 # Check if all bricks are destroyed
                 if not self.bricks:
                     self.game_won = True
+                    if self.level == 3:
+                        self.show_win_screen()
+                        running = False
+                    else:
+                        self.level += 1
+                        self.show_level_transition()
+                        self.initialize_level()
 
             self.screen.fill(BLACK)
             pygame.draw.rect(self.screen, WHITE, self.paddle.rect)
@@ -149,8 +205,16 @@ class BrickBreaker:
             hits_text = self.font.render(f'Paddle Hits: {self.paddle_hits}', True, WHITE)
             self.screen.blit(hits_text, (10, HEIGHT - 40))  # Positioned at the bottom in the new space
 
+            # Render the lives counter
+            lives_text = self.font.render(f'Lives: {self.lives}', True, WHITE)
+            self.screen.blit(lives_text, (WIDTH - 100, HEIGHT - 40))
+
+            # Render the score counter
+            score_text = self.font.render(f'Score: {self.score}', True, WHITE)
+            self.screen.blit(score_text, (WIDTH // 2 - 50, HEIGHT - 40))
+
             # Display win message if game is won
-            if self.game_won:
+            if self.game_won and self.level < 3:
                 win_text = self.win_font.render("You Win!", True, GREEN)
                 self.screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 2 - win_text.get_height() // 2))
 
@@ -166,7 +230,7 @@ class BrickBreaker:
             self.clock.tick(60)
 
             # Simple win animation (flashing text)
-            if self.game_won:
+            if self.game_won and self.level < 3:
                 pygame.time.wait(500)
 
         print("Game loop ended")
