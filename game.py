@@ -63,6 +63,8 @@ class BrickBreaker:
         self.ai = SimpleAI(self.paddle, self.ball)  # Initialize the AI
         self.paddle_hits = 0  # Counter for paddle hits
         self.font = pygame.font.SysFont('Arial', 24)  # Initialize font
+        self.win_font = pygame.font.SysFont('Arial', 48)  # Font for win message
+        self.game_won = False  # Flag to check if the game is won
 
         print("Initialized game components")
 
@@ -75,24 +77,28 @@ class BrickBreaker:
                     running = False
                     print("Exiting game loop")
 
-            self.ai.update()  # Update AI
+            if not self.game_won:
+                self.ai.update()  # Update AI
+                self.ball.move()
 
-            self.ball.move()
-
-            # Check for collisions
-            if self.ball.rect.colliderect(self.paddle.rect):
-                self.ball.dy = -self.ball.dy
-                self.paddle_hits += 1  # Increment paddle hits
-
-            for brick in self.bricks[:]:
-                if self.ball.rect.colliderect(brick.rect):
-                    self.bricks.remove(brick)
+                # Check for collisions
+                if self.ball.rect.colliderect(self.paddle.rect):
                     self.ball.dy = -self.ball.dy
+                    self.paddle_hits += 1  # Increment paddle hits
 
-            # Check if ball is lost
-            if self.ball.rect.bottom >= HEIGHT - 50:  # Adjusted for new height
-                print("Game Over")
-                running = False
+                for brick in self.bricks[:]:
+                    if self.ball.rect.colliderect(brick.rect):
+                        self.bricks.remove(brick)
+                        self.ball.dy = -self.ball.dy
+
+                # Check if ball is lost
+                if self.ball.rect.bottom >= HEIGHT - 50:  # Adjusted for new height
+                    print("Game Over")
+                    running = False
+
+                # Check if all bricks are destroyed
+                if not self.bricks:
+                    self.game_won = True
 
             self.screen.fill(BLACK)
             pygame.draw.rect(self.screen, WHITE, self.paddle.rect)
@@ -104,8 +110,17 @@ class BrickBreaker:
             hits_text = self.font.render(f'Paddle Hits: {self.paddle_hits}', True, WHITE)
             self.screen.blit(hits_text, (10, HEIGHT - 40))  # Positioned at the bottom in the new space
 
+            # Display win message if game is won
+            if self.game_won:
+                win_text = self.win_font.render("You Win!", True, GREEN)
+                self.screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 2 - win_text.get_height() // 2))
+
             pygame.display.flip()
             self.clock.tick(60)
+
+            # Simple win animation (flashing text)
+            if self.game_won:
+                pygame.time.wait(500)
 
         print("Game loop ended")
 
