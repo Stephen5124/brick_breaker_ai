@@ -81,7 +81,7 @@ class BrickBreaker:
         self.game_won = False  # Flag to check if the game is won
 
         # Slider properties
-        self.slider_rect = pygame.Rect(200, HEIGHT - 40, 400, 10)
+        self.slider_rect = pygame.Rect(200, HEIGHT - 60, 400, 10)
         self.slider_handle_rect = pygame.Rect(self.slider_rect.x, self.slider_rect.y - 5, 10, 20)
         self.dragging = False
 
@@ -106,6 +106,11 @@ class BrickBreaker:
         slider_range = self.slider_rect.width
         handle_position = self.slider_handle_rect.x - self.slider_rect.x
         return 0.5 + (handle_position / slider_range) * 1.5  # Speed multiplier from 0.5x to 2.0x
+
+    def get_speed_display_value(self):
+        slider_range = self.slider_rect.width
+        handle_position = self.slider_handle_rect.x - self.slider_rect.x
+        return int((handle_position / slider_range) * 9) + 1  # Speed value from 1 to 10
 
     def run(self):
         running = True
@@ -151,6 +156,11 @@ class BrickBreaker:
 
             # Draw the slider
             self.draw_slider()
+
+            # Display the speed value
+            speed_value = self.get_speed_display_value()
+            speed_text = self.font.render(f'Speed: {speed_value}', True, WHITE)
+            self.screen.blit(speed_text, (self.slider_rect.x, self.slider_rect.y + 20))
 
             pygame.display.flip()
             self.clock.tick(60)
