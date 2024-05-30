@@ -19,6 +19,8 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+GRAY = (200, 200, 200)
+DARK_GRAY = (100, 100, 100)
 
 # Paddle class
 class Paddle:
@@ -36,15 +38,27 @@ class Ball:
         self.dx = dx
         self.dy = dy
 
-    def move(self):
-        self.rect.x += self.dx
-        self.rect.y += self.dy
+    def move(self, speed_multiplier):
+        steps = int(max(abs(self.dx * speed_multiplier), abs(self.dy * speed_multiplier)))
+        for _ in range(steps):
+            self.rect.x += self.dx * speed_multiplier / steps
+            self.rect.y += self.dy * speed_multiplier / steps
 
-        # Bounce off walls
-        if self.rect.left <= 0 or self.rect.right >= WIDTH:
-            self.dx = -self.dx
-        if self.rect.top <= 0:
+            # Bounce off walls
+            if self.rect.left <= 0 or self.rect.right >= WIDTH:
+                self.dx = -self.dx
+            if self.rect.top <= 0:
+                self.dy = -self.dy
+
+    def update_position(self, paddle, bricks, game):
+        if self.rect.colliderect(paddle.rect):
             self.dy = -self.dy
+            game.paddle_hits += 1  # Increment paddle hits counter
+
+        for brick in bricks[:]:
+            if self.rect.colliderect(brick.rect):
+                bricks.remove(brick)
+                self.dy = -self.dy
 
 # Brick class
 class Brick:
@@ -66,7 +80,32 @@ class BrickBreaker:
         self.win_font = pygame.font.SysFont('Arial', 48)  # Font for win message
         self.game_won = False  # Flag to check if the game is won
 
+        # Slider properties
+        self.slider_rect = pygame.Rect(200, HEIGHT - 40, 400, 10)
+        self.slider_handle_rect = pygame.Rect(self.slider_rect.x, self.slider_rect.y - 5, 10, 20)
+        self.dragging = False
+
         print("Initialized game components")
+
+    def draw_slider(self):
+        pygame.draw.rect(self.screen, GRAY, self.slider_rect)
+        pygame.draw.rect(self.screen, DARK_GRAY, self.slider_handle_rect)
+
+    def handle_slider_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.slider_handle_rect.collidepoint(event.pos):
+                self.dragging = True
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.dragging = False
+        elif event.type == pygame.MOUSEMOTION:
+            if self.dragging:
+                new_x = max(self.slider_rect.x, min(event.pos[0], self.slider_rect.right))
+                self.slider_handle_rect.x = new_x
+
+    def get_slider_value(self):
+        slider_range = self.slider_rect.width
+        handle_position = self.slider_handle_rect.x - self.slider_rect.x
+        return 0.5 + (handle_position / slider_range) * 1.5  # Speed multiplier from 0.5x to 2.0x
 
     def run(self):
         running = True
@@ -76,20 +115,15 @@ class BrickBreaker:
                 if event.type == pygame.QUIT:
                     running = False
                     print("Exiting game loop")
+                self.handle_slider_event(event)
 
             if not self.game_won:
                 self.ai.update()  # Update AI
-                self.ball.move()
+                speed_multiplier = self.get_slider_value()
+                self.ball.move(speed_multiplier)  # Move ball with speed multiplier
 
                 # Check for collisions
-                if self.ball.rect.colliderect(self.paddle.rect):
-                    self.ball.dy = -self.ball.dy
-                    self.paddle_hits += 1  # Increment paddle hits
-
-                for brick in self.bricks[:]:
-                    if self.ball.rect.colliderect(brick.rect):
-                        self.bricks.remove(brick)
-                        self.ball.dy = -self.ball.dy
+                self.ball.update_position(self.paddle, self.bricks, self)
 
                 # Check if ball is lost
                 if self.ball.rect.bottom >= HEIGHT - 50:  # Adjusted for new height
@@ -114,6 +148,9 @@ class BrickBreaker:
             if self.game_won:
                 win_text = self.win_font.render("You Win!", True, GREEN)
                 self.screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 2 - win_text.get_height() // 2))
+
+            # Draw the slider
+            self.draw_slider()
 
             pygame.display.flip()
             self.clock.tick(60)
